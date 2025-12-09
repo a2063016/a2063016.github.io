@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>新生兒觀察與通報指引 - 隨堂測驗</title>
+    <style>
+        body { font-family: "Microsoft JhengHei", Arial, sans-serif; background-color: #f0f7ff; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
+        .container { background: white; padding: 30px; border-radius: 15px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); width: 90%; max-width: 600px; }
+        h1 { color: #2c3e50; text-align: center; font-size: 1.5rem; margin-bottom: 20px; }
+        .btn { display: block; width: 100%; padding: 12px; background-color: #4CAF50; color: white; border: none; border-radius: 5px; font-size: 1.1rem; cursor: pointer; margin-top: 20px; transition: background 0.3s; }
+        .btn:hover { background-color: #45a049; }
+        .input-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input, select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; box-sizing: border-box; }
+        
+        /* Quiz Section */
+        .question-card { display: none; }
+        .question-card.active { display: block; animation: fadeIn 0.5s; }
+        .question-text { font-size: 1.2rem; margin-bottom: 15px; font-weight: bold; color: #333; }
+        .options label { display: block; padding: 10px; border: 2px solid #eee; border-radius: 8px; margin-bottom: 8px; cursor: pointer; transition: all 0.2s; }
+        .options label:hover { background-color: #f9f9f9; border-color: #aaa; }
+        .options input[type="radio"] { display: none; }
+        .options input[type="radio"]:checked + span { color: #4CAF50; font-weight: bold; }
+        .options label.selected { border-color: #4CAF50; background-color: #e8f5e9; }
+
+        /* Result Section */
+        #result-screen { display: none; text-align: center; }
+        .score-display { font-size: 3rem; color: #4CAF50; margin: 20px 0; font-weight: bold; }
+        .copy-area { background: #f4f4f4; padding: 15px; border-radius: 5px; margin-top: 20px; text-align: left; }
+        
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .hidden { display: none; }
+        .error { color: red; font-size: 0.9rem; display: none; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div id="start-screen">
+        <h1>👶 新生兒觀察與通報指引測驗</h1>
+        <p style="text-align: center; color: #666; margin-bottom: 20px;">請輸入您的資料開始測驗</p>
+        
+        <div class="input-group">
+            <label for="username">姓名：</label>
+            <input type="text" id="username" placeholder="請輸入真實姓名">
+        </div>
+        
+        <div class="input-group">
+            <label for="jobtitle">職稱：</label>
+            <select id="jobtitle">
+                <option value="" disabled selected>請選擇職稱</option>
+                <option value="護理師">護理師</option>
+                <option value="嬰兒照護員">嬰兒照護員</option>
+                <option value="實習生">實習生/其他</option>
+            </select>
+        </div>
+        <p id="login-error" class="error">請完整填寫姓名與職稱</p>
+        <button class="btn" onclick="startQuiz()">開始測驗</button>
+    </div>
+
+    <div id="quiz-screen" class="hidden">
+        <div id="progress" style="text-align: right; color: #888; margin-bottom: 10px;">題目 1 / 10</div>
+        <div id="questions-container"></div>
+        <button class="btn" id="next-btn" onclick="nextQuestion()">下一題</button>
+    </div>
+
+    <div id="result-screen">
+        <h1>測驗完成！</h1>
+        <p>您的成績為</p>
+        <div class="score-display" id="final-score">0</div>
+        
+        <div class="copy-area">
+            <label>請複製下方文字回報：</label>
+            <textarea id="result-text" style="width: 100%; height: 60px; margin-top: 5px; resize: none;" readonly></textarea>
+        </div>
+        <button class="btn" onclick="copyResult()">複製結果並重測</button>
+    </div>
+</div>
+
+<script>
+    // 題目資料庫 (基於您的講義內容)
+    const questions = [
+        { q: "1. 受到刺激時雙臂張開再抱回，是屬於哪一種反射？", options: ["吸吮反射", "抓握反射", "驚嚇反射 (Moro)", "尋乳反射"], ans: 2 },
+        { q: "2. 關於「病理性抽搐(癲癇)」的特徵，何者正確？", options: ["入睡時發生", "輕抓肢體無法停止", "動作輕微短暫", "通常是對稱性的"], ans: 1 },
+        { q: "3. 發現寶寶活動力異常減少，幾乎不哭不動，應採取何種行動？", options: ["視為正常適應過程", "立即通報護理師", "觀察即可，不需處理", "給予更多保暖"], ans: 1 },
+        { q: "4. 接觸嘴唇時會出現吸吮動作，稱之為？", options: ["抓握反射", "驚嚇反射", "吸吮反射", "吞嚥反射"], ans: 2 },
+        { q: "5. 面對家長詢問寶寶臉上的生理性紅疹，何種回應最恰當？", options: ["「這很正常，不用大驚小怪」", "「可能是您給寶寶穿太多了」", "「我也不確定，幫您叫醫生」", "「我知道您會擔心，這很常見且寶寶精神很好，我會持續觀察」"], ans: 3 },
+        { q: "6. 當觀察到異常徵兆，下列何者「不是」第一線人員應立即做的？", options: ["確認呼吸道通暢", "給予詳細病理診斷", "口頭向護理師報告", "觀察精神膚色"], ans: 1 },
+        { q: "7. 疑似癲癇抽搐時，常伴隨什麼症狀？", options: ["大聲哭鬧", "眼神呆滯、呼吸改變", "食慾大增", "體溫驟降"], ans: 1 },
+        { q: "8. 向護理師通報完畢後，應如何告知家長？", options: ["「沒事了，請休息」", "「護理師會再過來跟您詳細說明」", "「狀況很嚴重，要有心理準備」", "「我已經記錄了」"], ans: 1 },
+        { q: "9. 抓握反射 (Grasping Reflex) 會出現在哪裡？", options: ["僅手掌", "僅腳底", "手掌及腳底皆有", "背部"], ans: 2 },
+        { q: "10. 對於「正常適應過程」與「警訊」的處理原則分別為？", options: ["皆需立即通報", "正常需觀察記錄；警訊需快速通報", "正常不需記錄", "全由家長自行觀察"], ans: 1 }
+    ];
+
+    let currentQ = 0;
+    let score = 0;
+    let userName = "";
+    let userTitle = "";
+
+    function startQuiz() {
+        userName = document.getElementById("username").value.trim();
+        userTitle = document.getElementById("jobtitle").value;
+        
+        if (!userName || !userTitle) {
+            document.getElementById("login-error").style.display = "block";
+            return;
+        }
+
+        document.getElementById("start-screen").style.display = "none";
+        document.getElementById("quiz-screen").style.display = "block";
+        renderQuestion();
+    }
+
+    function renderQuestion() {
+        const container = document.getElementById("questions-container");
+        const qData = questions[currentQ];
+        
+        document.getElementById("progress").innerText = `題目 ${currentQ + 1} / ${questions.length}`;
+
+        let html = `
+            <div class="question-card active">
+                <div class="question-text">${qData.q}</div>
+                <div class="options">
+        `;
+        
+        qData.options.forEach((opt, index) => {
+            html += `
+                <label onclick="selectOption(this)">
+                    <input type="radio" name="q" value="${index}">
+                    <span>${opt}</span>
+                </label>
+            `;
+        });
+
+        html += `</div></div>`;
+        container.innerHTML = html;
+        document.getElementById("next-btn").disabled = true;
+        document.getElementById("next-btn").style.opacity = "0.5";
+    }
+
+    function selectOption(label) {
+        // 清除其他選項樣式
+        const allLabels = document.querySelectorAll(".options label");
+        allLabels.forEach(l => l.classList.remove("selected"));
+        
+        // 標記當前選項
+        label.classList.add("selected");
+        label.querySelector("input").checked = true;
+        
+        // 啟用下一題按鈕
+        const btn = document.getElementById("next-btn");
+        btn.disabled = false;
+        btn.style.opacity = "1";
+    }
+
+    function nextQuestion() {
+        const selected = document.querySelector('input[name="q"]:checked');
+        if (!selected) return;
+
+        // 計算分數
+        if (parseInt(selected.value) === questions[currentQ].ans) {
+            score += 10;
+        }
+
+        currentQ++;
+        if (currentQ < questions.length) {
+            renderQuestion();
+        } else {
+            showResult();
+        }
+    }
+
+    function showResult() {
+        document.getElementById("quiz-screen").style.display = "none";
+        document.getElementById("result-screen").style.display = "block";
+        document.getElementById("final-score").innerText = score + " 分";
+        
+        // 生成回報文字
+        const date = new Date().toLocaleDateString();
+        const text = `[新生兒照護測驗] ${date}\n姓名：${userName}\n職稱：${userTitle}\n得分：${score} / 100`;
+        document.getElementById("result-text").value = text;
+    }
+
+    function copyResult() {
+        const copyText = document.getElementById("result-text");
+        copyText.select();
+        document.execCommand("copy");
+        alert("成績已複製！請貼上回報給主管。");
+        location.reload(); // 重置
+    }
+</script>
+
+</body>
+</html>
